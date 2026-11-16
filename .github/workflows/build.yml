@@ -8,22 +8,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Unzip project
-        run: unzip -q ./*.zip
+        run: |
+          mkdir proj
+          unzip -q ./*.zip -d proj
+          find proj -maxdepth 3 | head -40
+      - name: Find project folder
+        run: |
+          G=$(find proj -name gradlew | head -1)
+          if [ -z "$G" ]; then echo "gradlew not found in zip"; exit 1; fi
+          echo "PROJ=$(dirname "$G")" >> "$GITHUB_ENV"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
       - name: Test and build
-        working-directory: PDRAssistant
         run: |
+          cd "$PROJ"
           chmod +x ./gradlew
           ./gradlew --no-daemon testDebugUnitTest assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: PDRAssistant-debug-apk
-          path: PDRAssistant/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.PROJ }}/app/build/outputs/apk/debug/app-debug.apk
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: reports
-          path: PDRAssistant/app/build/reports
+          path: ${{ env.PROJ }}/app/build/reports
